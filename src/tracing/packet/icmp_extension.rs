@@ -528,4 +528,117 @@ pub mod extension_splitter {
             (icmp_payload, None)
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::tracing::packet::icmp_extension::extension_header::ExtensionHeaderPacket;
+        use crate::tracing::packet::icmp_extension::extension_object::{
+            ClassNum, ClassSubType, ExtensionObjectPacket,
+        };
+        use crate::tracing::packet::icmp_extension::extension_structure::ExtensionsPacket;
+        use crate::tracing::packet::icmpv4::echo_request::EchoRequestPacket;
+        use crate::tracing::packet::icmpv4::time_exceeded::TimeExceededPacket;
+        use crate::tracing::packet::icmpv4::{IcmpCode, IcmpType};
+        use crate::tracing::packet::ipv4::Ipv4Packet;
+        use std::net::Ipv4Addr;
+
+        // This ICMP TimeExceeded packet which contains single `MPLS` extension object with a single member.  The
+        // packet does not have a `length` field and is therefore rfc4884 non-complaint.
+        #[test]
+        #[allow(clippy::cognitive_complexity)]
+        fn test_split_extension_ipv4_time_exceeded_non_compliant_mpls() {
+            let buf = hex_literal::hex!(
+                "
+                0b 00 f4 ff 00 00 00 00 45 00 00 54 cc 1c 40 00
+                01 01 b5 f4 c0 a8 01 15 5d b8 d8 22 08 00 0f e3
+                65 da 82 42 00 00 00 00 00 00 00 00 00 00 00 00
+                00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+                00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+                00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+                00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+                00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+                00 00 00 00 00 00 00 00 20 00 99 3a 00 08 01 01
+                04 bb 41 01
+                "
+            );
+            let time_exceeded_packet = TimeExceededPacket::new_view(&buf).unwrap();
+            assert_eq!(IcmpType::TimeExceeded, time_exceeded_packet.get_icmp_type());
+            assert_eq!(IcmpCode(0), time_exceeded_packet.get_icmp_code());
+            assert_eq!(62719, time_exceeded_packet.get_checksum());
+            assert_eq!(0, time_exceeded_packet.get_length());
+            assert_eq!(&buf[8..136], time_exceeded_packet.payload());
+            assert_eq!(Some(&buf[136..]), time_exceeded_packet.extension());
+
+            let nested_ipv4 = Ipv4Packet::new_view(&buf[8..136]).unwrap();
+            assert_eq!(Ipv4Addr::from([192, 168, 1, 21]), nested_ipv4.get_source());
+            assert_eq!(
+                Ipv4Addr::from([93, 184, 216, 34]),
+                nested_ipv4.get_destination()
+            );
+            assert_eq!(&buf[28..136], nested_ipv4.payload());
+
+            let nested_echo = EchoRequestPacket::new_view(nested_ipv4.payload()).unwrap();
+            assert_eq!(IcmpCode(0), nested_echo.get_icmp_code());
+            assert_eq!(IcmpType::EchoRequest, nested_echo.get_icmp_type());
+            assert_eq!(0x0FE3, nested_echo.get_checksum());
+            assert_eq!(26074, nested_echo.get_identifier());
+            assert_eq!(33346, nested_echo.get_sequence());
+            assert_eq!(&buf[36..136], nested_echo.payload());
+
+            let extensions =
+                ExtensionsPacket::new_view(time_exceeded_packet.extension().unwrap()).unwrap();
+
+            let extension_header = ExtensionHeaderPacket::new_view(extensions.header()).unwrap();
+            assert_eq!(2, extension_header.get_version());
+            assert_eq!(0x993A, extension_header.get_checksum());
+
+            let object_bytes = extensions.objects().next().unwrap();
+            let extension_object = ExtensionObjectPacket::new_view(object_bytes).unwrap();
+
+            assert_eq!(8, extension_object.get_length());
+            assert_eq!(
+                ClassNum::MultiProtocolLabelSwitchingLabelStack,
+                extension_object.get_class_num()
+            );
+            assert_eq!(ClassSubType(1), extension_object.get_class_subtype());
+            assert_eq!([0x04, 0xbb, 0x41, 0x01], extension_object.payload());
+        }
+
+        // This ICMP TimeExceeded packet does not have any ICMP extensions.  It has a rfc4884 complaint `length` field.
+        #[test]
+        fn test_split_extension_ipv4_time_exceeded_compliant_no_extension() {
+            let buf = hex_literal::hex!(
+                "
+                0b 00 f4 ee 00 11 00 00 45 00 00 54 a2 ee 40 00
+                01 01 df 22 c0 a8 01 15 5d b8 d8 22 08 00 0f e1
+                65 da 82 44 00 00 00 00 00 00 00 00 00 00 00 00
+                00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+                00 00 00 00 00 00 00 00 00 00 00 00
+                "
+            );
+            let time_exceeded_packet = TimeExceededPacket::new_view(&buf).unwrap();
+            assert_eq!(IcmpType::TimeExceeded, time_exceeded_packet.get_icmp_type());
+            assert_eq!(IcmpCode(0), time_exceeded_packet.get_icmp_code());
+            assert_eq!(62702, time_exceeded_packet.get_checksum());
+            assert_eq!(17, time_exceeded_packet.get_length());
+            assert_eq!(&buf[8..76], time_exceeded_packet.payload());
+            assert_eq!(None, time_exceeded_packet.extension());
+
+            let nested_ipv4 = Ipv4Packet::new_view(&buf[8..76]).unwrap();
+            assert_eq!(Ipv4Addr::from([192, 168, 1, 21]), nested_ipv4.get_source());
+            assert_eq!(
+                Ipv4Addr::from([93, 184, 216, 34]),
+                nested_ipv4.get_destination()
+            );
+            assert_eq!(&buf[28..76], nested_ipv4.payload());
+
+            let nested_echo = EchoRequestPacket::new_view(nested_ipv4.payload()).unwrap();
+            assert_eq!(IcmpCode(0), nested_echo.get_icmp_code());
+            assert_eq!(IcmpType::EchoRequest, nested_echo.get_icmp_type());
+            assert_eq!(0x0FE1, nested_echo.get_checksum());
+            assert_eq!(26074, nested_echo.get_identifier());
+            assert_eq!(33348, nested_echo.get_sequence());
+            assert_eq!(&buf[36..76], nested_echo.payload());
+        }
+    }
 }
