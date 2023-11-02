@@ -477,3 +477,55 @@ pub mod extension_object {
         }
     }
 }
+
+pub mod extension_splitter {
+    const ICMP_ORIG_DATAGRAM_MIN_LENGTH: usize = 128;
+
+    /// Separate an ICMP payload from ICMP extensions as defined in rfc4884.
+    ///
+    /// Applies to `TimeExceeded` and `DestinationUnreachable` ICMP messages only.
+    #[must_use]
+    pub fn split(rfc4884_length: u8, icmp_payload: &[u8]) -> (&[u8], Option<&[u8]>) {
+        let orig_datagram_length = usize::from(rfc4884_length * 4);
+
+        // TODO what to do if the claimed orig_datagram_length is bigger than the actual payload?
+        // we could truncate or we can err or we could return empty?
+        if orig_datagram_length > icmp_payload.len() {
+            return (&[], None);
+        }
+
+        if orig_datagram_length > 0 {
+            // compliant message case
+            if icmp_payload.len() > orig_datagram_length {
+                // extension case (untested): the icmp_payload is longer than the orig_datagram and so whatever remains must be an extension
+                let extension_len = icmp_payload.len() - orig_datagram_length;
+                let extension =
+                    &icmp_payload[orig_datagram_length..orig_datagram_length + extension_len];
+                (
+                    &icmp_payload[..orig_datagram_length - extension_len],
+                    Some(extension),
+                )
+            } else {
+                (&icmp_payload[..orig_datagram_length], None)
+            }
+            //    "Specifically, when a TRACEROUTE application operating in non-
+            //    compliant mode receives a sufficiently long ICMP message that does
+            //    not specify a length attribute, it will parse for a valid extension
+            //    header at a fixed location, assuming a 128-octet "original datagram"
+            //    field."
+            // TODO - have to include length of the extension header here?  MTR does
+        } else if orig_datagram_length == 0 && icmp_payload.len() > ICMP_ORIG_DATAGRAM_MIN_LENGTH {
+            // extension present, non-compliant message
+            let extension_len = icmp_payload.len() - ICMP_ORIG_DATAGRAM_MIN_LENGTH;
+            let extension = &icmp_payload
+                [ICMP_ORIG_DATAGRAM_MIN_LENGTH..ICMP_ORIG_DATAGRAM_MIN_LENGTH + extension_len];
+            (
+                &icmp_payload[..icmp_payload.len() - extension_len],
+                Some(extension),
+            )
+        } else {
+            // no extension present
+            (icmp_payload, None)
+        }
+    }
+}
