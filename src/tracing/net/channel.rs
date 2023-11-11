@@ -28,6 +28,7 @@ pub struct TracerChannel<S: Socket> {
     packet_size: PacketSize,
     payload_pattern: PayloadPattern,
     multipath_strategy: MultipathStrategy,
+    initial_sequence: Sequence,
     tos: TypeOfService,
     read_timeout: Duration,
     tcp_connect_timeout: Duration,
@@ -67,6 +68,7 @@ impl<S: Socket> TracerChannel<S> {
             packet_size: config.packet_size,
             payload_pattern: config.payload_pattern,
             multipath_strategy: config.multipath_strategy,
+            initial_sequence: config.initial_sequence,
             tos: config.tos,
             read_timeout: config.read_timeout,
             tcp_connect_timeout: config.tcp_connect_timeout,
@@ -159,6 +161,7 @@ impl<S: Socket> TracerChannel<S> {
                     self.packet_size,
                     self.payload_pattern,
                     self.multipath_strategy,
+                    self.initial_sequence,
                 )
             }
             _ => unreachable!(),

@@ -250,12 +250,21 @@ impl<F: Fn(&TracerRound<'_>)> Tracer<F> {
                 src_port,
                 dest_port,
                 checksum,
+                payload_len,
             }) => {
-                let sequence = match (self.config.multipath_strategy, self.config.port_direction) {
-                    (MultipathStrategy::Classic, PortDirection::FixedDest(_)) => src_port,
-                    (MultipathStrategy::Classic, _) => dest_port,
-                    (MultipathStrategy::Paris, _) => checksum,
-                    (MultipathStrategy::Dublin, _) => identifier,
+                let sequence = match (
+                    self.config.multipath_strategy,
+                    self.config.port_direction,
+                    self.config.target_addr,
+                ) {
+                    (MultipathStrategy::Classic, PortDirection::FixedDest(_), _) => src_port,
+                    (MultipathStrategy::Classic, _, _) => dest_port,
+                    (MultipathStrategy::Paris, _, _) => checksum,
+                    (MultipathStrategy::Dublin, _, IpAddr::V4(_)) => identifier,
+                    (MultipathStrategy::Dublin, _, IpAddr::V6(_)) => {
+                        // let payload_len = ((probe.sequence.0 - initial_sequence.0) % MAX_UDP_PAYLOAD_BUF) + 1;
+                        self.config.initial_sequence.0 + payload_len - 1
+                    }
                 };
                 (TraceId(0), Sequence(sequence), resp.recv, resp.addr)
             }

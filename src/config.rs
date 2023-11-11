@@ -457,16 +457,11 @@ impl TryFrom<(Args, &Platform)> for TrippyConfig {
             }
             (false, false, Some(AddressFamily::Ipv6)) | (_, true, _) => TracerAddrFamily::Ipv6,
         };
-        let multipath_strategy = match (multipath_strategy_cfg, addr_family) {
-            (MultipathStrategyConfig::Classic, _) => Ok(MultipathStrategy::Classic),
-            (MultipathStrategyConfig::Paris, _) => Ok(MultipathStrategy::Paris),
-            (MultipathStrategyConfig::Dublin, TracerAddrFamily::Ipv4) => {
-                Ok(MultipathStrategy::Dublin)
-            }
-            (MultipathStrategyConfig::Dublin, TracerAddrFamily::Ipv6) => Err(anyhow!(
-                "Dublin multipath strategy not implemented for IPv6 yet!"
-            )),
-        }?;
+        let multipath_strategy = match multipath_strategy_cfg {
+            MultipathStrategyConfig::Classic => MultipathStrategy::Classic,
+            MultipathStrategyConfig::Paris => MultipathStrategy::Paris,
+            MultipathStrategyConfig::Dublin => MultipathStrategy::Dublin,
+        };
         let port_direction = match (protocol, source_port, target_port, multipath_strategy_cfg) {
             (TracerProtocol::Icmp, _, _, _) => PortDirection::None,
             (TracerProtocol::Udp, None, None, _) => PortDirection::new_fixed_src(pid.max(1024)),

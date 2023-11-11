@@ -256,6 +256,7 @@ fn make_channel_config(
         args.packet_size,
         args.payload_pattern,
         args.multipath_strategy,
+        args.initial_sequence,
         args.tos,
         args.read_timeout,
         args.min_round_duration,

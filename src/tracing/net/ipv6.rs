@@ -77,6 +77,7 @@ pub fn dispatch_udp_probe<S: Socket>(
     packet_size: PacketSize,
     payload_pattern: PayloadPattern,
     multipath_strategy: MultipathStrategy,
+    initial_sequence: Sequence,
 ) -> TraceResult<()> {
     let packet_size = usize::from(packet_size.0);
     if packet_size > MAX_PACKET_SIZE {
@@ -92,6 +93,7 @@ pub fn dispatch_udp_probe<S: Socket>(
             dest_addr,
             payload,
             multipath_strategy,
+            initial_sequence,
         ),
         PrivilegeMode::Unprivileged => {
             dispatch_udp_probe_non_raw::<S>(probe, src_addr, dest_addr, payload)
@@ -108,11 +110,18 @@ fn dispatch_udp_probe_raw<S: Socket>(
     dest_addr: Ipv6Addr,
     payload: &[u8],
     multipath_strategy: MultipathStrategy,
+    initial_sequence: Sequence,
 ) -> TraceResult<()> {
     let mut udp_buf = [0_u8; MAX_UDP_PACKET_BUF];
+    let dublin_payload = [222_u8; MAX_UDP_PAYLOAD_BUF];
     let payload_paris = probe.sequence.0.to_be_bytes();
     let payload = if multipath_strategy == MultipathStrategy::Paris {
         payload_paris.as_slice()
+    } else if multipath_strategy == MultipathStrategy::Dublin {
+        // TODO fails with: range end index 977 out of range for slice of length 976
+        // need to wrap by the length, but how to restore it in the tracer?
+        let payload_len = (probe.sequence.0 - initial_sequence.0) + 1;
+        &dublin_payload[..usize::from(payload_len)]
     } else {
         payload
     };
@@ -336,9 +345,13 @@ fn extract_probe_resp_seq(
             )))
         }
         (TracerProtocol::Udp, IpProtocol::Udp) => {
-            let (src_port, dest_port, checksum) = extract_udp_packet(ipv6)?;
+            let (src_port, dest_port, checksum, payload_len) = extract_udp_packet(ipv6)?;
             Some(ProbeResponseSeq::Udp(ProbeResponseSeqUdp::new(
-                0, src_port, dest_port, checksum,
+                0,
+                src_port,
+                dest_port,
+                checksum,
+                payload_len,
             )))
         }
         (TracerProtocol::Tcp, IpProtocol::Tcp) => {
@@ -359,12 +372,13 @@ fn extract_echo_request(ipv6: &Ipv6Packet<'_>) -> TraceResult<(u16, u16)> {
     ))
 }
 
-fn extract_udp_packet(ipv6: &Ipv6Packet<'_>) -> TraceResult<(u16, u16, u16)> {
+fn extract_udp_packet(ipv6: &Ipv6Packet<'_>) -> TraceResult<(u16, u16, u16, u16)> {
     let udp_packet = UdpPacket::new_view(ipv6.payload()).req()?;
     Ok((
         udp_packet.get_source(),
         udp_packet.get_destination(),
         udp_packet.get_checksum(),
+        udp_packet.get_length() - UdpPacket::minimum_packet_size() as u16,
     ))
 }
 

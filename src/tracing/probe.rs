@@ -186,15 +186,23 @@ pub struct ProbeResponseSeqUdp {
     pub src_port: u16,
     pub dest_port: u16,
     pub checksum: u16,
+    pub payload_len: u16,
 }
 
 impl ProbeResponseSeqUdp {
-    pub fn new(identifier: u16, src_port: u16, dest_port: u16, checksum: u16) -> Self {
+    pub fn new(
+        identifier: u16,
+        src_port: u16,
+        dest_port: u16,
+        checksum: u16,
+        payload_len: u16,
+    ) -> Self {
         Self {
             identifier,
             src_port,
             dest_port,
             checksum,
+            payload_len,
         }
     }
 }

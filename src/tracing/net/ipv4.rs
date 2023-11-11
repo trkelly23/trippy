@@ -396,7 +396,7 @@ fn extract_probe_resp_seq(
         (TracerProtocol::Udp, IpProtocol::Udp) => {
             let (src_port, dest_port, checksum, identifier) = extract_udp_packet(ipv4)?;
             Some(ProbeResponseSeq::Udp(ProbeResponseSeqUdp::new(
-                identifier, src_port, dest_port, checksum,
+                identifier, src_port, dest_port, checksum, 0,
             )))
         }
         (TracerProtocol::Tcp, IpProtocol::Tcp) => {
