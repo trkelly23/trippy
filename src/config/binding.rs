@@ -25,6 +25,7 @@ pub struct TuiBindings {
     pub toggle_freeze: TuiKeyBinding,
     pub toggle_chart: TuiKeyBinding,
     pub toggle_map: TuiKeyBinding,
+    pub toggle_flows: TuiKeyBinding,
     pub expand_hosts: TuiKeyBinding,
     pub contract_hosts: TuiKeyBinding,
     pub expand_hosts_max: TuiKeyBinding,
@@ -63,6 +64,7 @@ impl TuiBindings {
             (self.toggle_freeze, TuiCommandItem::ToggleFreeze),
             (self.toggle_chart, TuiCommandItem::ToggleChart),
             (self.toggle_map, TuiCommandItem::ToggleMap),
+            (self.toggle_flows, TuiCommandItem::ToggleFlows),
             (self.expand_hosts, TuiCommandItem::ExpandHosts),
             (self.expand_hosts_max, TuiCommandItem::ExpandHostsMax),
             (self.contract_hosts, TuiCommandItem::ContractHosts),
@@ -161,6 +163,10 @@ impl From<(HashMap<TuiCommandItem, TuiKeyBinding>, ConfigBindings)> for TuiBindi
                 .get(&TuiCommandItem::ToggleChart)
                 .or(cfg.toggle_chart.as_ref())
                 .unwrap_or(&TuiKeyBinding::new(KeyCode::Char('c'))),
+            toggle_flows: *cmd_items
+                .get(&TuiCommandItem::ToggleFlows)
+                .or(cfg.toggle_flows.as_ref())
+                .unwrap_or(&TuiKeyBinding::new(KeyCode::Char('f'))),
             toggle_map: *cmd_items
                 .get(&TuiCommandItem::ToggleMap)
                 .or(cfg.toggle_map.as_ref())
@@ -472,6 +478,8 @@ pub enum TuiCommandItem {
     ToggleChart,
     /// Toggle the map.
     ToggleMap,
+    /// Toggle the flows panel.
+    ToggleFlows,
     /// Expand hosts.
     ExpandHosts,
     /// Expand hosts to max.

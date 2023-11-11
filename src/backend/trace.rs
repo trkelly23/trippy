@@ -11,6 +11,8 @@ use trippy::tracing::{Probe, ProbeStatus, TracerRound};
 #[derive(Debug, Clone)]
 pub struct Trace {
     max_samples: usize,
+    /// The flow id for the current round.
+    round_flow_id: FlowId,
     trace_data: HashMap<FlowId, TraceData>,
     registry: FlowRegistry,
     error: Option<String>,
@@ -22,6 +24,7 @@ impl Trace {
         Self {
             trace_data: once((Self::default_flow_id(), TraceData::new(max_samples)))
                 .collect::<HashMap<FlowId, TraceData>>(),
+            round_flow_id: Self::default_flow_id(),
             max_samples,
             registry: FlowRegistry::new(),
             error: None,
@@ -68,6 +71,11 @@ impl Trace {
         self.trace_data[&flow_id].round_count()
     }
 
+    /// The `FlowId` for the current round.
+    pub fn round_flow_id(&self) -> FlowId {
+        self.round_flow_id
+    }
+
     /// The registry of flows in the trace.
     pub fn flows(&self) -> &[(Flow, FlowId)] {
         self.registry.flows()
@@ -94,6 +102,7 @@ impl Trace {
                 .map(|p| p.host),
         );
         let flow_id = self.registry.register(flow);
+        self.round_flow_id = flow_id;
         self.update_trace_flow(Self::default_flow_id(), round);
         self.update_trace_flow(flow_id, round);
     }

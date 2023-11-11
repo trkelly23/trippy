@@ -1,4 +1,4 @@
-use crate::frontend::render::{body, footer, header, help, settings, tabs};
+use crate::frontend::render::{body, flows, footer, header, help, settings, tabs};
 use crate::frontend::tui_app::TuiApp;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::Frame;
@@ -33,7 +33,10 @@ use ratatui::Frame;
 /// On startup a splash screen is shown in place of the hops table, until the completion of the
 /// first round.
 pub fn render(f: &mut Frame<'_>, app: &mut TuiApp) {
-    let constraints = if app.trace_info.len() > 1 {
+    // TODO ensure we don't allow flows and tabs at the same time or mix up layouts
+    let constraints = if app.show_flows {
+        LAYOUT_WITH_FLOWS.as_slice()
+    } else if app.trace_info.len() > 1 {
         LAYOUT_WITH_TABS.as_slice()
     } else {
         LAYOUT_WITHOUT_TABS.as_slice()
@@ -45,6 +48,10 @@ pub fn render(f: &mut Frame<'_>, app: &mut TuiApp) {
     header::render(f, app, chunks[0]);
     if app.trace_info.len() > 1 {
         tabs::render(f, chunks[1], app);
+        body::render(f, chunks[2], app);
+        footer::render(f, chunks[3], app);
+    } else if app.show_flows {
+        flows::render(f, chunks[1], app);
         body::render(f, chunks[2], app);
         footer::render(f, chunks[3], app);
     } else {
@@ -67,6 +74,13 @@ const LAYOUT_WITHOUT_TABS: [Constraint; 3] = [
 const LAYOUT_WITH_TABS: [Constraint; 4] = [
     Constraint::Length(5),
     Constraint::Length(3),
+    Constraint::Min(10),
+    Constraint::Length(6),
+];
+
+const LAYOUT_WITH_FLOWS: [Constraint; 4] = [
+    Constraint::Length(5),
+    Constraint::Length(6),
     Constraint::Min(10),
     Constraint::Length(6),
 ];

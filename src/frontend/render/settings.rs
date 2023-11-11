@@ -279,6 +279,7 @@ fn format_binding_settings(app: &TuiApp) -> Vec<SettingsItem> {
         SettingsItem::new("toggle-freeze", format!("{}", binds.toggle_freeze)),
         SettingsItem::new("toggle-chart", format!("{}", binds.toggle_chart)),
         SettingsItem::new("toggle-map", format!("{}", binds.toggle_map)),
+        SettingsItem::new("toggle-flows", format!("{}", binds.toggle_flows)),
         SettingsItem::new("expand-hosts", format!("{}", binds.expand_hosts)),
         SettingsItem::new("expand-hosts-max", format!("{}", binds.expand_hosts_max)),
         SettingsItem::new("contract-hosts", format!("{}", binds.contract_hosts)),
@@ -403,7 +404,7 @@ pub const SETTINGS_TABS: [(&str, usize); 6] = [
     ("Trace", 14),
     ("Dns", 4),
     ("GeoIp", 1),
-    ("Bindings", 26),
+    ("Bindings", 27),
     ("Theme", 27),
 ];
 

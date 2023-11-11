@@ -48,6 +48,7 @@ pub fn run_frontend(
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)]
 fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     trace_info: Vec<TraceInfo>,
@@ -99,11 +100,19 @@ fn run_app<B: Backend>(
                     } else if bindings.previous_hop.check(key) {
                         app.previous_hop();
                     } else if bindings.previous_trace.check(key) {
-                        app.previous_trace();
-                        app.clear();
+                        if app.show_flows {
+                            app.previous_flow();
+                        } else {
+                            app.previous_trace();
+                            app.clear();
+                        }
                     } else if bindings.next_trace.check(key) {
-                        app.next_trace();
-                        app.clear();
+                        if app.show_flows {
+                            app.next_flow();
+                        } else {
+                            app.next_trace();
+                            app.clear();
+                        }
                     } else if bindings.next_hop_address.check(key) {
                         app.next_hop_address();
                     } else if bindings.previous_hop_address.check(key) {
@@ -120,6 +129,8 @@ fn run_app<B: Backend>(
                         app.toggle_chart();
                     } else if bindings.toggle_map.check(key) {
                         app.toggle_map();
+                    } else if bindings.toggle_flows.check(key) {
+                        app.toggle_flows();
                     } else if bindings.contract_hosts_min.check(key) {
                         app.contract_hosts_min();
                     } else if bindings.expand_hosts_max.check(key) {

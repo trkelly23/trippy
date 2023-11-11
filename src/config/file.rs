@@ -192,6 +192,7 @@ pub struct ConfigBindings {
     pub address_mode_both: Option<TuiKeyBinding>,
     pub toggle_freeze: Option<TuiKeyBinding>,
     pub toggle_chart: Option<TuiKeyBinding>,
+    pub toggle_flows: Option<TuiKeyBinding>,
     pub toggle_map: Option<TuiKeyBinding>,
     pub expand_hosts: Option<TuiKeyBinding>,
     pub contract_hosts: Option<TuiKeyBinding>,
